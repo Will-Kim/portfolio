@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faceswap 결과 동영상</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <style>
+        body {
+            background-color: #ffffff;
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 40px 0;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 50px;
+            letter-spacing: -0.5px;
+        }
+        
+        .gallery-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .frame-container {
+            position: relative;
+            cursor: pointer;
+            margin-bottom: 30px;
+            transition: transform 0.3s ease;
+        }
+        
+        .frame-container:hover {
+            transform: translateY(-5px);
+        }
+        
+        .picture-frame {
+            background: #f5f5f5;
+            border: 15px solid #e0e0e0;
+            box-shadow: 
+                0 0 0 2px #d0d0d0,
+                0 0 0 3px #c0c0c0,
+                0 10px 30px rgba(0,0,0,0.15),
+                inset 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .frame-inner {
+            position: relative;
+            width: 100%;
+            background: #000;
+            overflow: hidden;
+        }
+        
+        .video-thumbnail {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        
+        .video-canvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        /* 16:9 비율 (가로형) */
+        .frame-inner.horizontal {
+            aspect-ratio: 16/9;
+        }
+        
+        /* 9:16 비율 (세로형) */
+        .frame-inner.vertical {
+            aspect-ratio: 9/16;
+        }
+        
+        .frame-inner canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .frame-inner video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .play-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .frame-container:hover .play-overlay {
+            opacity: 1;
+        }
+        
+        .play-button {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .play-button i {
+            font-size: 2.5rem;
+            color: #333;
+            margin-left: 5px;
+        }
+        
+        /* 액자 아래 라벨 */
+        .frame-label {
+            text-align: center;
+            margin-top: 15px;
+            color: #666;
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+        
+        /* 모달 스타일 */
+        .modal-content {
+            background-color: #000;
+            border: none;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .modal-header {
+            border: none;
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            z-index: 1000;
+        }
+        
+        .btn-close {
+            background-color: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            opacity: 1;
+            padding: 0.5rem;
+        }
+        
+        .modal-body {
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+        }
+        
+        .modal-body video {
+            max-width: 100%;
+            max-height: 85vh;
+            width: auto;
+            height: auto;
+        }
+        
+        /* 그리드 간격 조정 */
+        .row {
+            --bs-gutter-x: 2rem;
+            --bs-gutter-y: 2rem;
+        }
+        
+        /* 로딩 스피너 */
+        .loading-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .picture-frame {
+                border-width: 10px;
+            }
+            
+            .play-button {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .play-button i {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Faceswap 결과 동영상</h1>
+        
+        <div class="gallery-container">
+            <div class="row">
+                <!-- 비디오 1 - 가로형 -->
+                <div class="col-lg-6 col-md-6">
+                    <div class="frame-container" data-bs-toggle="modal" data-bs-target="#videoModal1">
+                        <div class="picture-frame">
+                            <div class="frame-inner horizontal">
+                                <canvas id="canvas1" class="video-canvas"></canvas>
+                                <video id="video1" src="1.mp4" style="display: none;" crossorigin="anonymous"></video>
+                                <div class="loading-spinner">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                                <div class="play-overlay">
+                                    <div class="play-button">
+                                        <i class="bi bi-play-fill"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="frame-label">Sample #1</div>
+                    </div>
+                </div>
+
+                <!-- 비디오 2 - 세로형 -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="frame-container" data-bs-toggle="modal" data-bs-target="#videoModal2">
+                        <div class="picture-frame">
+                            <div class="frame-inner vertical">
+                                <canvas id="canvas2" class="video-canvas"></canvas>
+                                <video id="video2" src="2.mp4" style="display: none;" crossorigin="anonymous"></video>
+                                <div class="loading-spinner">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                                <div class="play-overlay">
+                                    <div class="play-button">
+                                        <i class="bi bi-play-fill"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="frame-label">Sample #2</div>
+                    </div>
+                </div>
+
+                <!-- 비디오 3 - 세로형 -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="frame-container" data-bs-toggle="modal" data-bs-target="#videoModal3">
+                        <div class="picture-frame">
+                            <div class="frame-inner vertical">
+                                <canvas id="canvas3" class="video-canvas"></canvas>
+                                <video id="video3" src="3.mp4" style="display: none;" crossorigin="anonymous"></video>
+                                <div class="loading-spinner">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                                <div class="play-overlay">
+                                    <div class="play-button">
+                                        <i class="bi bi-play-fill"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="frame-label">Sample #3</div>
+                    </div>
+                </div>
+
+                <!-- 비디오 4 - 가로형 -->
+                <div class="col-lg-8 col-md-8">
+                    <div class="frame-container" data-bs-toggle="modal" data-bs-target="#videoModal4">
+                        <div class="picture-frame">
+                            <div class="frame-inner horizontal">
+                                <canvas id="canvas4" class="video-canvas"></canvas>
+                                <video id="video4" src="4.mp4" style="display: none;" crossorigin="anonymous"></video>
+                                <div class="loading-spinner">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                                <div class="play-overlay">
+                                    <div class="play-button">
+                                        <i class="bi bi-play-fill"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="frame-label">Sample #4</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- 비디오 모달들 -->
+    <div class="modal fade" id="videoModal1" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <video src="1.mp4" controls autoplay>
+                        브라우저가 비디오를 지원하지 않습니다.
+                    </video>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="videoModal2" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <video src="2.mp4" controls autoplay>
+                        브라우저가 비디오를 지원하지 않습니다.
+                    </video>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="videoModal3" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <video src="3.mp4" controls autoplay>
+                        브라우저가 비디오를 지원하지 않습니다.
+                    </video>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="videoModal4" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <video src="4.mp4" controls autoplay>
+                        브라우저가 비디오를 지원하지 않습니다.
+                    </video>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // 비디오에서 썸네일 캡처
+        function captureVideoFrame(videoId, canvasId) {
+            const video = document.getElementById(videoId);
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            const spinner = video.parentElement.querySelector('.loading-spinner');
+            
+            video.addEventListener('loadeddata', function() {
+                // 비디오의 1초 지점으로 이동
+                video.currentTime = 1;
+            });
+            
+            video.addEventListener('seeked', function() {
+                // 캔버스 크기를 비디오 크기에 맞춤
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // 비디오 프레임을 캔버스에 그리기
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // 로딩 스피너 숨기기
+                if (spinner) {
+                    spinner.style.display = 'none';
+                }
+            });
+            
+            video.addEventListener('error', function() {
+                console.error('비디오 로드 실패:', videoId);
+                if (spinner) {
+                    spinner.innerHTML = '<i class="bi bi-exclamation-circle" style="font-size: 2rem;"></i>';
+                }
+            });
+        }
+
+        // 모든 비디오에 대해 썸네일 캡처
+        document.addEventListener('DOMContentLoaded', function() {
+            for (let i = 1; i <= 5; i++) {
+                captureVideoFrame(`video${i}`, `canvas${i}`);
+            }
+        });
+
+        // 모달이 닫힐 때 비디오 정지
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('hidden.bs.modal', () => {
+                const video = modal.querySelector('video');
+                if (video) {
+                    video.pause();
+                    video.currentTime = 0;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
